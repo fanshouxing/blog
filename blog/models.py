@@ -3,6 +3,9 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.urls import reverse
 
+import markdown
+from django.utils.html import strip_tags
+
 # Create your models here.
 from django.utils.six import python_2_unicode_compatible
 
@@ -63,6 +66,8 @@ class Post(models.Model):
     # 因为我们规定一篇文章只能有一个作者，而一个作者可能会写多篇文章，因此这是一对多的关联关系，和 Category 类似。
     author = models.ForeignKey(User)
 
+    views = models.PositiveIntegerField(default=0)
+
     def __str__(self):
         return self.title
 
@@ -72,3 +77,17 @@ class Post(models.Model):
 
     class Meta:
         ordering = ['-created_time']
+
+    def increase_views(self):
+        self.views +=1
+        self.save(update_fields=['views'])
+
+
+    def save(self,*args,**kwargs):
+        if not self.excerpt:
+            md = markdown.Markdown(extensions=[
+                'markdown.extensions.extra',
+                'markdown.extensions.codehilite',
+            ])
+            self.excerpt = strip_tags(md.convert(self.body))[:54]
+        super(Post,self).save(*args,**kwargs)
